@@ -71,10 +71,10 @@ def on_message(client, userdata, msg):
     try:
         temp = payload["uplink_message"]["decoded_payload"]["temperature"]
         timestamp = payload["received_at"]
-        # zamiast asyncio.run(), używamy create_task na kolejce
-        asyncio.create_task(send_queue.put((temp, timestamp)))
+        loop = asyncio.get_event_loop()
+        loop.call_soon_threadsafe(send_queue.put_nowait, (temp, timestamp))
     except Exception as e:
-        print("❌ Błąd w on_message:", e)
+        print("❌ Błąd MQTT:", e)
 
 
 def start_mqtt():
