@@ -2,4 +2,4 @@ fastapi
 uvicorn
 jinja2
 paho.mqtt
-'uvicorn[standard]'
+uvicorn[standard]
