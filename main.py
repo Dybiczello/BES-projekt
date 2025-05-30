@@ -9,73 +9,63 @@ import paho.mqtt.client as mqtt
 
 APP_ID = "bes-test"
 DEVICE_ID = "my-new-device"
-API_KEY = "NNSXS.73VZYON46SRCG6QTCQE3SFXPGR5R67KXWPC422I.Z5VQ2FLCP3MVJMKKTTNPBR46BXJA7FMTL3HNJJ5SUHVU36OISLPQ"
+API_KEY = "NNSXS.73VZYON46SRCG6QTCQE3SFXPGR5R67XWPC422I.Z5VQ2FLCP3MVJMKKTTNPBR46BXJA7FMTL3HNJJ5SUHVU36OISLPQ"
 
 app = FastAPI()
-
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 websockets = []
-send_queue = asyncio.Queue()  # kolejka do przesyłania danych między MQTT a websocketami
-
+send_queue = asyncio.Queue()
+main_loop = asyncio.get_event_loop()  # <-- globalny event loop
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    print("🟢 Nowy WebSocket połączenie")
     await websocket.accept()
-    print("✅ WebSocket accepted")
     websockets.append(websocket)
     try:
         while True:
-            await asyncio.sleep(1)  # utrzymuj połączenie przy życiu
-    except:
-        print("❌ WebSocket disconnected")
+            await asyncio.sleep(1)  # keep connection open
+    except Exception as e:
+        print(f"🔴 WebSocket rozłączony: {e}")
     finally:
-        if websocket in websockets:
-            websockets.remove(websocket)
-
+        websockets.remove(websocket)
 
 async def websocket_broadcaster():
     while True:
         temp, timestamp = await send_queue.get()
         message = json.dumps({"temperature": temp, "timestamp": timestamp})
-        to_remove = []
+        # Usuwamy WebSockety zamknięte
+        disconnected = []
         for ws in websockets:
             try:
                 await ws.send_text(message)
-            except:
-                to_remove.append(ws)
-        for ws in to_remove:
-            if ws in websockets:
-                websockets.remove(ws)
-
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(websocket_broadcaster())
-    start_mqtt()
-
+            except Exception as e:
+                print(f"🔴 Błąd wysyłania do klienta WebSocket: {e}")
+                disconnected.append(ws)
+        for ws in disconnected:
+            websockets.remove(ws)
 
 def on_connect(client, userdata, flags, rc):
     topic = f"v3/{APP_ID}@ttn/devices/{DEVICE_ID}/up"
+    print(f"🔌 Połączono z MQTT, subskrypcja na temat: {topic}")
     client.subscribe(topic)
-
 
 def on_message(client, userdata, msg):
     payload = json.loads(msg.payload.decode())
     try:
         temp = payload["uplink_message"]["decoded_payload"]["temperature"]
         timestamp = payload["received_at"]
-        loop = asyncio.get_event_loop()
-        loop.call_soon_threadsafe(send_queue.put_nowait, (temp, timestamp))
+        # Przekazujemy do event loopa w bezpieczny sposób
+        main_loop.call_soon_threadsafe(send_queue.put_nowait, (temp, timestamp))
+        print(f"📥 Otrzymano temperaturę: {temp} o czasie: {timestamp}")
     except Exception as e:
         print("❌ Błąd MQTT:", e)
-
 
 def start_mqtt():
     client = mqtt.Client()
@@ -84,3 +74,8 @@ def start_mqtt():
     client.on_message = on_message
     client.connect("eu1.cloud.thethings.network", 1883, 60)
     client.loop_start()
+
+start_mqtt()
+
+# Uruchamiamy task nadawczy WebSocketów
+asyncio.create_task(websocket_broadcaster())
