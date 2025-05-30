@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Temperatura na żywo</title>
+
+  <!-- Chart.js + Luxon -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+
+  <!-- Nasz kod -->
+  <script src="/static/chart.js" defer></script>
+
+  <link rel="icon" href="data:,">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f7f9fc;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      color: #1976d2;
+    }
+    .temp-box {
+      text-align: center;
+      margin-bottom: 2rem;
+      background: linear-gradient(45deg, #2196f3, #21cbf3);
+      padding: 1.5rem;
+      border-radius: 10px;
+      color: white;
+      font-size: 2.2rem;
+      font-weight: bold;
+      box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Temperatura na żywo</h1>
+    <div class="temp-box" id="current-temp">-- °C</div>
+    <canvas id="chart"></canvas>
+  </div>
+</body>
+</html>
