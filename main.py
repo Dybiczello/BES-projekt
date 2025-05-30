@@ -17,7 +17,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 websockets = []
 send_queue = asyncio.Queue()
-main_loop = asyncio.get_event_loop()  # <-- globalny event loop
+main_loop = asyncio.get_event_loop()
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -30,21 +30,24 @@ async def websocket_endpoint(websocket: WebSocket):
     websockets.append(websocket)
     try:
         while True:
-            await asyncio.sleep(1)  # keep connection open
+            await asyncio.sleep(1)
     except Exception as e:
         print(f"🔴 WebSocket rozłączony: {e}")
     finally:
-        websockets.remove(websocket)
+        if websocket in websockets:
+            websockets.remove(websocket)
 
 async def websocket_broadcaster():
     while True:
+        print("⏳ Czekam na dane w kolejce...")
         temp, timestamp = await send_queue.get()
+        print(f"🚀 Wysyłam dane do klientów: temp={temp}, time={timestamp}")
         message = json.dumps({"temperature": temp, "timestamp": timestamp})
-        # Usuwamy WebSockety zamknięte
         disconnected = []
         for ws in websockets:
             try:
                 await ws.send_text(message)
+                print("✅ Wysłano do klienta")
             except Exception as e:
                 print(f"🔴 Błąd wysyłania do klienta WebSocket: {e}")
                 disconnected.append(ws)
@@ -61,9 +64,8 @@ def on_message(client, userdata, msg):
     try:
         temp = payload["uplink_message"]["decoded_payload"]["temperature"]
         timestamp = payload["received_at"]
-        # Przekazujemy do event loopa w bezpieczny sposób
-        main_loop.call_soon_threadsafe(send_queue.put_nowait, (temp, timestamp))
         print(f"📥 Otrzymano temperaturę: {temp} o czasie: {timestamp}")
+        main_loop.call_soon_threadsafe(send_queue.put_nowait, (temp, timestamp))
     except Exception as e:
         print("❌ Błąd MQTT:", e)
 
@@ -77,5 +79,7 @@ def start_mqtt():
 
 start_mqtt()
 
-# Uruchamiamy task nadawczy WebSocketów
-asyncio.create_task(websocket_broadcaster())
+@app.on_event("startup")
+async def startup_event():
+    print("⚙️ Uruchamiam websocket_broadcaster task")
+    asyncio.create_task(websocket_broadcaster())
