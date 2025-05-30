@@ -42,7 +42,7 @@ const chart = new Chart(ctx, {
   }
 });
 
-const ws = new WebSocket("ws://" + location.host + "/ws");
+const ws = new WebSocket("wss://" + location.host + "/ws");
 
 ws.onmessage = function(event) {
   const data = JSON.parse(event.data);
