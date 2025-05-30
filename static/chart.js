@@ -1,29 +1,31 @@
-// Pobieramy kontekst canvas z HTML
 const ctx = document.getElementById('chart').getContext('2d');
 
-// Tworzymy wykres liniowy Chart.js
 const chart = new Chart(ctx, {
   type: 'line',
   data: {
-    labels: [], // tutaj będą timestampy
+    labels: [],
     datasets: [{
-      label: 'Temperatura [°C]',
-      data: [], // tutaj będą wartości temperatury
-      borderColor: 'rgba(75, 192, 192, 1)',
-      borderWidth: 2,
-      fill: false,
-      tension: 0.1,
+      label: 'Temperatura (°C)',
+      data: [],
+      borderColor: 'rgba(255, 99, 132, 1)',
+      backgroundColor: 'rgba(255, 99, 132, 0.2)',
+      tension: 0.3,
+      pointRadius: 4,
+      pointBackgroundColor: 'rgba(255,99,132,1)'
     }]
   },
   options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'bottom'
+      }
+    },
     scales: {
       x: {
-        type: 'time',           // oś czasu
+        type: 'time',
         time: {
-          unit: 'minute',
-          displayFormats: {
-            minute: 'HH:mm:ss'
-          }
+          unit: 'minute'
         },
         title: {
           display: true,
@@ -33,49 +35,23 @@ const chart = new Chart(ctx, {
       y: {
         title: {
           display: true,
-          text: 'Temperatura [°C]'
-        },
-        suggestedMin: 0,
-        suggestedMax: 40
+          text: 'Temperatura (°C)'
+        }
       }
     }
   }
 });
 
-// Tworzymy połączenie WebSocket
-const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-const ws = new WebSocket(protocol + location.host + "/ws");
+const ws = new WebSocket("wss://" + location.host + "/ws");
 
-// Obsługa otrzymania wiadomości przez WebSocket
 ws.onmessage = function(event) {
-  console.log("Otrzymano wiadomość WebSocket:", event.data);
   const data = JSON.parse(event.data);
+  const now = new Date();
 
   const temperature = data.temperature;
-  const timestamp = new Date(data.timestamp);
-
-  // Aktualizujemy widoczny na stronie aktualny odczyt temperatury
   document.getElementById("current-temp").textContent = `${temperature.toFixed(2)} °C`;
 
-  // Dodajemy dane do wykresu
-  chart.data.labels.push(timestamp);
+  chart.data.labels.push(now);
   chart.data.datasets[0].data.push(temperature);
-
-  // Limitujemy rozmiar danych na wykresie, np. 30 ostatnich punktów
-  if(chart.data.labels.length > 30) {
-    chart.data.labels.shift();
-    chart.data.datasets[0].data.shift();
-  }
-
   chart.update();
-};
-
-// Obsługa błędów WebSocket
-ws.onerror = function(event) {
-  console.error("WebSocket error:", event);
-};
-
-// Opcjonalnie: informacja o otwarciu połączenia
-ws.onopen = function() {
-  console.log("WebSocket połączony");
 };
