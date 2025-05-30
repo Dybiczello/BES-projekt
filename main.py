@@ -60,14 +60,17 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(topic)
 
 def on_message(client, userdata, msg):
-    payload = json.loads(msg.payload.decode())
+    print(f"📡 Otrzymano wiadomość MQTT na topic {msg.topic}")
     try:
+        payload = json.loads(msg.payload.decode())
+        print("📦 Payload:", payload)
         temp = payload["uplink_message"]["decoded_payload"]["temperature"]
         timestamp = payload["received_at"]
         print(f"📥 Otrzymano temperaturę: {temp} o czasie: {timestamp}")
         main_loop.call_soon_threadsafe(send_queue.put_nowait, (temp, timestamp))
     except Exception as e:
-        print("❌ Błąd MQTT:", e)
+        print("❌ Błąd MQTT w on_message:", e)
+
 
 def start_mqtt():
     client = mqtt.Client()
