@@ -27,11 +27,23 @@ async def index(request: Request):
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     websockets.append(websocket)
+
+    # Fetch historical data
+    history = fetch_historical_data()
+    print(f"Fetched {len(history)} history items")
+
+    # Wyślij jako JEDEN obiekt
+    await websocket.send_text(json.dumps({
+        "type": "history",
+        "data": history
+    }))
+
     try:
         while True:
             await asyncio.sleep(1)
     except:
         websockets.remove(websocket)
+
 
 def on_connect(client, userdata, flags, rc):
     topic = f"v3/{APP_ID}@ttn/devices/{DEVICE_ID}/up"
@@ -60,3 +72,32 @@ def start_mqtt():
     client.loop_start()
 
 start_mqtt()
+
+def fetch_historical_data():
+    url = f"https://eu1.cloud.thethings.network/api/v3/as/applications/{APP_ID}/packages/storage/uplink_message"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Accept": "application/json"
+    }
+    params = {
+        "last": "12h",
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+    messages = []
+
+    try:
+        # Rozbij tekst na linie (każda linia to osobny JSON)
+        lines = response.text.strip().split('\n')
+        for line in lines:
+            data = json.loads(line)
+            result = data.get("result")
+            if result:
+                temp = result["uplink_message"]["decoded_payload"]["temperature"]
+                timestamp = result["received_at"]
+                messages.append({"temperature": temp, "timestamp": timestamp})
+
+    except Exception as e:
+        print("Failed to parse historical data:", e)
+
+    return messages
