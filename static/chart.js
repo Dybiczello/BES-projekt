@@ -45,13 +45,32 @@ const chart = new Chart(ctx, {
 const ws = new WebSocket("wss://" + location.host + "/ws");
 
 ws.onmessage = function(event) {
-  const data = JSON.parse(event.data);
-  const now = new Date();
+  console.log("Received:", event.data);
+  const msg = JSON.parse(event.data);
 
-  const temperature = data.temperature;
-  document.getElementById("current-temp").textContent = `${temperature.toFixed(2)} °C`;
+  if (msg.type === "history") {
+    const history = msg.data;
 
-  chart.data.labels.push(now);
-  chart.data.datasets[0].data.push(temperature);
-  chart.update();
+    history.forEach(data => {
+      const timestamp = new Date(data.timestamp);
+      const temperature = data.temperature;
+
+      chart.data.labels.push(timestamp);
+      chart.data.datasets[0].data.push(temperature);
+    });
+
+    chart.update();
+  }
+
+  // Obsługa nowych danych (na żywo)
+  if (!msg.type) {
+    const temperature = msg.temperature;
+    const timestamp = new Date(msg.timestamp);
+
+    document.getElementById("current-temp").textContent = `${temperature.toFixed(2)} °C`;
+
+    chart.data.labels.push(timestamp);
+    chart.data.datasets[0].data.push(temperature);
+    chart.update();
+  }
 };
