@@ -81,7 +81,7 @@ def fetch_historical_data():
         "Accept": "application/json"
     }
     params = {
-        "last": "12h",
+        "last": "1h",
     }
 
     response = requests.get(url, headers=headers, params=params)
