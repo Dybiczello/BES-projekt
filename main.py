@@ -6,6 +6,7 @@ from starlette.requests import Request
 import asyncio
 import json
 import paho.mqtt.client as mqtt
+import requests
 
 APP_ID = "bes-test"
 DEVICE_ID = "my-new-device"
